@@ -79,14 +79,19 @@ export default function AuthCallbackPage() {
   );
 
   useEffect(() => {
-    if (confirmation.status !== "opening") return;
+    if (confirmation.status === "checking") return;
+
+    const clearAuthParams = () => {
+      window.history.replaceState(null, "", window.location.pathname);
+    };
+
+    if (confirmation.status === "error") {
+      clearAuthParams();
+      return;
+    }
 
     const timeout = window.setTimeout(() => {
-      window.history.replaceState(
-        null,
-        "",
-        window.location.pathname,
-      );
+      clearAuthParams();
       window.location.replace(confirmation.appUrl);
     }, 250);
 

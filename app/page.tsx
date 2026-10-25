@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function HomePage() {
   return (
     <main className="page-shell">
@@ -11,11 +9,9 @@ export default function HomePage() {
         <h1>Email confirmation</h1>
         <p className="description">
           This page receives LocalBite email confirmation links. Open the
-          confirmation link from your email to continue.
+          newest confirmation link from your email to continue. Opening this
+          page directly cannot confirm an email.
         </p>
-        <Link className="text-link" href="/auth/callback">
-          Open confirmation page
-        </Link>
       </section>
     </main>
   );
