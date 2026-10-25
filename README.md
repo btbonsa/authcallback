@@ -5,7 +5,8 @@ magic link. It forwards the authorization code or session tokens to the
 LocalBite app's `localbite://auth/callback` route, which completes sign-in and
 loads the customer's profile. The page removes auth parameters from the
 browser address bar before opening the app. It does not need Supabase
-credentials.
+credentials. If Supabase redirects to the site root with a complete session
+token pair instead, the homepage forwards it to the same app callback.
 
 ## Deploy to Vercel
 
