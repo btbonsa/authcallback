@@ -1,9 +1,11 @@
 # LocalBite auth callback
 
-This small Next.js site receives the HTTPS redirect after Supabase confirms a
-signup email. It reads the confirmation result from the browser URL fragment,
-removes that fragment so tokens are not left in the address bar, and tells the
-user to return to LocalBite and sign in. It does not need Supabase credentials.
+This small Next.js site receives the HTTPS redirect after Supabase verifies a
+magic link. It forwards the authorization code or session tokens to the
+LocalBite app's `localbite://auth/callback` route, which completes sign-in and
+loads the customer's profile. The page removes auth parameters from the
+browser address bar before opening the app. It does not need Supabase
+credentials.
 
 ## Deploy to Vercel
 
@@ -15,8 +17,8 @@ user to return to LocalBite and sign in. It does not need Supabase credentials.
 
 ## Configure Supabase and the Expo app
 
-1. In Supabase **Authentication → URL Configuration**, keep the current **Site
-   URL** and add this exact URL to **Redirect URLs**:
+1. In Supabase **Authentication → URL Configuration**, keep **Site URL** set
+   to the app's root URL and add this exact URL to **Redirect URLs**:
    `https://<deployed-origin>/auth/callback`
 2. In `Frontend/.env`, set
    `EXPO_PUBLIC_AUTH_REDIRECT_URL=https://<deployed-origin>/auth/callback`.
@@ -25,4 +27,5 @@ user to return to LocalBite and sign in. It does not need Supabase credentials.
 4. Ensure the Supabase confirmation email template uses
    `{{ .ConfirmationURL }}`.
 
-After confirmation, the user returns to the LocalBite app and signs in there.
+After confirmation, the callback opens LocalBite to complete passwordless
+sign-in. The app must be installed with the `localbite` scheme configured.

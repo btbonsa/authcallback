@@ -4,7 +4,7 @@ import { useEffect, useSyncExternalStore } from "react";
 
 type ConfirmationState =
   | { status: "checking" }
-  | { status: "confirmed" }
+  | { status: "opening"; appUrl: string }
   | { status: "error"; message: string };
 
 const checking: ConfirmationState = { status: "checking" };
@@ -14,24 +14,60 @@ let cachedConfirmation: ConfirmationState = checking;
 
 function getConfirmationState(): ConfirmationState {
   const currentUrl = new URL(window.location.href);
-  const locationKey = `${currentUrl.pathname}${currentUrl.search}`;
+  const locationKey = currentUrl.href;
   if (cachedLocation === locationKey) return cachedConfirmation;
 
-  const params = new URLSearchParams(currentUrl.hash.slice(1));
+  const fragment = new URLSearchParams(currentUrl.hash.slice(1));
   const errorDescription =
-    params.get("error_description") ??
+    fragment.get("error_description") ??
     currentUrl.searchParams.get("error_description");
+  const errorCode = fragment.get("error_code") ?? currentUrl.searchParams.get("error_code");
 
   cachedLocation = locationKey;
-  cachedConfirmation = errorDescription
-    ? { status: "error", message: errorDescription }
-    : params.has("access_token")
-      ? { status: "confirmed" }
-      : {
-          status: "error",
-          message:
-            "This link may have expired or already been used. Return to LocalBite to sign in, or request a new confirmation email.",
-        };
+  if (errorDescription) {
+    cachedConfirmation = {
+      status: "error",
+      message: `${errorCode ? `${errorCode}: ` : ""}${errorDescription}`,
+    };
+    return cachedConfirmation;
+  }
+
+  const callbackParams = new URLSearchParams();
+  for (const name of [
+    "code",
+    "token_hash",
+    "type",
+    "access_token",
+    "refresh_token",
+    "error",
+    "error_code",
+    "error_description",
+  ]) {
+    const value = currentUrl.searchParams.get(name) ?? fragment.get(name);
+    if (value) callbackParams.set(name, value);
+  }
+
+  const tokenType = callbackParams.get("type");
+  const hasEmailToken =
+    callbackParams.has("token_hash") &&
+    (tokenType === "signup" || tokenType === "email" || tokenType === "magiclink");
+
+  if (
+    callbackParams.has("code") ||
+    hasEmailToken ||
+    (callbackParams.has("access_token") && callbackParams.has("refresh_token"))
+  ) {
+    cachedConfirmation = {
+      status: "opening",
+      appUrl: `localbite://auth/callback?${callbackParams.toString()}`,
+    };
+  } else {
+    cachedConfirmation = {
+      status: "error",
+      message:
+        "This link may have expired or already been used. Return to LocalBite to sign in, or request a new confirmation email.",
+    };
+  }
   return cachedConfirmation;
 }
 
@@ -43,20 +79,25 @@ export default function AuthCallbackPage() {
   );
 
   useEffect(() => {
-    if (window.location.hash) {
+    if (confirmation.status !== "opening") return;
+
+    const timeout = window.setTimeout(() => {
       window.history.replaceState(
         null,
         "",
-        `${window.location.pathname}${window.location.search}`,
+        window.location.pathname,
       );
-    }
-  }, []);
+      window.location.replace(confirmation.appUrl);
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [confirmation]);
 
   return (
     <main className="page-shell">
       <section className="card" aria-live="polite">
         <div className="brand-mark" aria-hidden="true">
-          {confirmation.status === "confirmed" ? "✓" : "🍲"}
+          {confirmation.status === "opening" ? "✓" : "🍲"}
         </div>
         <p className="eyebrow">LOCALBITE</p>
         {confirmation.status === "checking" ? (
@@ -64,14 +105,16 @@ export default function AuthCallbackPage() {
             <h1>Checking your email link…</h1>
             <p className="description">Please wait a moment.</p>
           </>
-        ) : confirmation.status === "confirmed" ? (
+        ) : confirmation.status === "opening" ? (
           <>
-            <h1>Email confirmed</h1>
+            <h1>Opening LocalBite…</h1>
             <p className="description">
-              Your email address is verified. You can return to the LocalBite
-              app and sign in.
+              Your sign-in link is ready. If the app doesn’t open automatically,
+              use the button below.
             </p>
-            <p className="hint">You can close this page after returning to the app.</p>
+            <a className="text-link" href={confirmation.appUrl}>
+              Open LocalBite
+            </a>
           </>
         ) : (
           <>
